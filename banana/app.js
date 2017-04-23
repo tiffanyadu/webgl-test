@@ -94,6 +94,7 @@ var runDemo = function (vertexShaderText, fragmentShaderText, bananaImg, bananaM
   var bananaVertices = bananaModel.meshes[0].vertices;
   var bananaIndices = [].concat.apply([], bananaModel.meshes[0].faces);
   var bananaTexCoords = bananaModel.meshes[0].texturecoords[0];
+  var bananaNormals = bananaModel.meshes[0].normals;
 
   var bananaPosVertexBufferObject = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, bananaPosVertexBufferObject);
@@ -106,6 +107,10 @@ var runDemo = function (vertexShaderText, fragmentShaderText, bananaImg, bananaM
   var bananaIndexBufferObject = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bananaIndexBufferObject);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(bananaIndices), gl.STATIC_DRAW);
+
+  var bananaNormalBufferObject = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, bananaNormalBufferObject);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(bananaNormals), gl.STATIC_DRAW);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, bananaPosVertexBufferObject);
   var positionAttribLocation = gl.getAttribLocation(program, 'vertPosition');
@@ -129,8 +134,18 @@ var runDemo = function (vertexShaderText, fragmentShaderText, bananaImg, bananaM
     2 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
     0 // Offset from the beginning of a single vertex to this attribute
   );
-
   gl.enableVertexAttribArray(texCoordAttribLocation);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, bananaNormalBufferObject);
+  var normalAttribLocation = gl.getAttribLocation(program, 'vertNormal');
+  gl.vertexAttribPointer(
+    normalAttribLocation,
+    3, gl.FLOAT,
+    gl.TRUE,
+    3 * Float32Array.BYTES_PER_ELEMENT,
+    0
+  );
+  gl.enableVertexAttribArray(normalAttribLocation);
 
   //
   // Create texture
@@ -171,6 +186,18 @@ var runDemo = function (vertexShaderText, fragmentShaderText, bananaImg, bananaM
   var yRotationMatrix = new Float32Array(16);
 
   //
+  // Lighting Information
+  //
+  gl.useProgram(program);
+  var ambientUniformLocation = gl.getUniformLocation(program, 'ambientLightIntensity');
+  var sunlightIntUniformLocation = gl.getUniformLocation(program, 'sunlightIntensity');
+  var sunlightDirUniformLocation = gl.getUniformLocation(program, 'sunlightDirection');
+
+  gl.uniform3f(ambientUniformLocation, 1.0, 0.9, 0.9);
+  gl.uniform3f(sunlightIntUniformLocation, 0.6, 0.5, 0.5);
+  gl.uniform3f(sunlightDirUniformLocation, 2.0, 4.0, -2.0);
+
+  //
   // Main render loop
   //
   var identityMatrix = new Float32Array(16);
@@ -178,12 +205,12 @@ var runDemo = function (vertexShaderText, fragmentShaderText, bananaImg, bananaM
   var angle = 0;
   var loop = function () {
     angle = performance.now() / 1000 / 6 * 2 * Math.PI;
-    mat4.rotate(yRotationMatrix, identityMatrix, angle, [1, 1, 1]);
-    mat4.rotate(xRotationMatrix, identityMatrix, angle / 4, [1, 1, 1]);
+    mat4.rotate(yRotationMatrix, identityMatrix, angle, [0, 1, 1]);
+    mat4.rotate(xRotationMatrix, identityMatrix, angle / 2, [1, 1, 0]);
     mat4.mul(worldMatrix, yRotationMatrix, xRotationMatrix);
     gl.uniformMatrix4fv(matWorldUniformLocation, gl.FALSE, worldMatrix);
 
-    gl.clearColor(0.0, 0.45, 0.0, 1.0);
+    gl.clearColor(1.0, 0.85, 0.85, 1.0);
     gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
 
     gl.bindTexture(gl.TEXTURE_2D, bananaTexture);
